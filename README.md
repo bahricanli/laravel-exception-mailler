@@ -1,12 +1,17 @@
 # BahriCanli ExceptionMailer
 
-Laravel uygulamalarında raporlanan exception kayıtlarını e-posta olarak gönderen küçük bir paket.
+Laravel 8 ve üzeri uygulamalarda raporlanan exception kayıtlarını e-posta olarak gönderen küçük bir paket.
 
 ## Kurulum
 
 ```bash
 composer require bahricanli/exception-mailer
 ```
+
+## Gereksinimler
+
+- PHP 7.3 veya üzeri
+- Laravel 8 veya üzeri
 
 Laravel package discovery provider'ı otomatik yükler. Config dosyasını yayınlamak için:
 

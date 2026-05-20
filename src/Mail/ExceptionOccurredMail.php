@@ -11,12 +11,32 @@ class ExceptionOccurredMail extends Mailable
     use Queueable;
     use SerializesModels;
 
-    public function __construct(
-        public string $subjectLine,
-        public array $exceptionData,
-        public array $requestData,
-        public array $fromConfig = []
-    ) {
+    /**
+     * @var string
+     */
+    public $subjectLine;
+
+    /**
+     * @var array
+     */
+    public $exceptionData;
+
+    /**
+     * @var array
+     */
+    public $requestData;
+
+    /**
+     * @var array
+     */
+    public $fromConfig;
+
+    public function __construct(string $subjectLine, array $exceptionData, array $requestData, array $fromConfig = [])
+    {
+        $this->subjectLine = $subjectLine;
+        $this->exceptionData = $exceptionData;
+        $this->requestData = $requestData;
+        $this->fromConfig = $fromConfig;
     }
 
     public function build(): self

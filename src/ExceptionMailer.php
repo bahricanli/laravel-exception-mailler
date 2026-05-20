@@ -15,12 +15,25 @@ use Throwable;
 
 class ExceptionMailer
 {
-    private bool $sending = false;
+    /**
+     * @var bool
+     */
+    private $sending = false;
 
-    public function __construct(
-        private readonly Config $config,
-        private readonly LoggerInterface $logger
-    ) {
+    /**
+     * @var \Illuminate\Contracts\Config\Repository
+     */
+    private $config;
+
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    private $logger;
+
+    public function __construct(Config $config, LoggerInterface $logger)
+    {
+        $this->config = $config;
+        $this->logger = $logger;
     }
 
     public function report(Throwable $exception, bool $force = false): bool
@@ -49,10 +62,10 @@ class ExceptionMailer
 
         try {
             $mailable = new ExceptionOccurredMail(
-                subjectLine: $this->subjectLine($exception),
-                exceptionData: $this->exceptionData($exception),
-                requestData: $this->requestData(),
-                fromConfig: $this->from()
+                $this->subjectLine($exception),
+                $this->exceptionData($exception),
+                $this->requestData(),
+                $this->from()
             );
 
             $pendingMail = $this->pendingMail($to);
@@ -66,7 +79,7 @@ class ExceptionMailer
 
             if ($this->config->get('exception-mailer.log_success', false)) {
                 $this->logger->info('Exception mail sent.', [
-                    'exception' => $exception::class,
+                    'exception' => get_class($exception),
                     'message' => $exception->getMessage(),
                 ]);
             }
@@ -75,7 +88,7 @@ class ExceptionMailer
         } catch (Throwable $mailException) {
             if ($this->config->get('exception-mailer.log_failures', true)) {
                 $this->logger->error('Exception mail could not be sent.', [
-                    'exception' => $exception::class,
+                    'exception' => get_class($exception),
                     'message' => $exception->getMessage(),
                     'mail_exception' => $mailException,
                 ]);
@@ -161,15 +174,15 @@ class ExceptionMailer
         $previous = $exception->getPrevious();
 
         return [
-            'class' => $exception::class,
-            'short_class' => class_basename($exception),
+            'class' => get_class($exception),
+            'short_class' => class_basename(get_class($exception)),
             'message' => $exception->getMessage(),
             'code' => $exception->getCode(),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
             'trace' => $this->traceData($exception),
             'previous' => $previous ? [
-                'class' => $previous::class,
+                'class' => get_class($previous),
                 'message' => $previous->getMessage(),
                 'file' => $previous->getFile(),
                 'line' => $previous->getLine(),
@@ -246,7 +259,7 @@ class ExceptionMailer
         return $route->getName();
     }
 
-    private function normalizeData(mixed $value): mixed
+    private function normalizeData($value)
     {
         if ($value instanceof UploadedFile) {
             return [
@@ -257,13 +270,15 @@ class ExceptionMailer
         }
 
         if (is_array($value)) {
-            return array_map(fn (mixed $item): mixed => $this->normalizeData($item), $value);
+            return array_map(function ($item) {
+                return $this->normalizeData($item);
+            }, $value);
         }
 
         if (is_object($value)) {
             return method_exists($value, '__toString')
                 ? (string) $value
-                : get_debug_type($value);
+                : get_class($value);
         }
 
         if (is_resource($value)) {
@@ -307,12 +322,12 @@ class ExceptionMailer
             '{{ app }}' => (string) config('app.name', 'Laravel'),
             '{{ environment }}' => (string) app()->environment(),
             '{{ exception }}' => class_basename($exception),
-            '{{ class }}' => $exception::class,
+            '{{ class }}' => get_class($exception),
             '{{ message }}' => $exception->getMessage(),
         ]);
     }
 
-    private function pendingMail(array $to): mixed
+    private function pendingMail(array $to)
     {
         $mailer = $this->config->get('exception-mailer.mailer')
             ? Mail::mailer($this->config->get('exception-mailer.mailer'))
@@ -369,9 +384,13 @@ class ExceptionMailer
         }
 
         return array_values(array_filter(array_map(
-            static fn (mixed $item): string => trim((string) $item),
+            static function ($item): string {
+                return trim((string) $item);
+            },
             (array) $value
-        ), static fn (string $item): bool => $item !== ''));
+        ), static function (string $item): bool {
+            return $item !== '';
+        }));
     }
 
     private function logMissingRecipients(): void
